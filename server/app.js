@@ -14,6 +14,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 app.use('/api/auth', require('./routers/authRoutes'));
+app.use('/api/products', require('./routers/productRoutes'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`ShopEasy running on http://localhost:${PORT}`);
