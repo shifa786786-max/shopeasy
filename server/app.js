@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
-
+app.use('/api/auth', require('./routers/authRoutes'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`ShopEasy running on http://localhost:${PORT}`);
