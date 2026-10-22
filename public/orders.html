@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Orders - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <h2 style="margin-bottom:14px">My orders</h2>
+    <div id="orders"><p class="muted">Loading...</p></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    function detailHtml(order, items) {
+      const rows = items
+        .map(
+          (i) => `<tr>
+            <td>${escapeHtml(i.name)}</td>
+            <td>${i.quantity}</td>
+            <td>${formatPrice(i.unit_price)}</td>
+            <td>${formatPrice(i.unit_price * i.quantity)}</td>
+          </tr>`
+        )
+        .join('');
+      const cancel =
+        order.status === 'Placed'
+          ? `<button class="btn danger small" data-act="cancel" data-id="${order.id}" style="margin-top:10px">Cancel order</button>`
+          : '';
+      return `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <p style="margin-top:10px">
+          <b>Ship to:</b> ${escapeHtml(order.shipping_name)}, ${escapeHtml(order.shipping_phone)}<br>
+          ${escapeHtml(order.shipping_address)}, ${escapeHtml(order.shipping_city)} - ${escapeHtml(order.shipping_pincode)}<br>
+          <b>Payment:</b> ${escapeHtml(order.payment_method)}
+        </p>
+        ${cancel}`;
+    }
+
+    async function loadOrders() {
+      const box = document.getElementById('orders');
+      try {
+        const { orders } = await api('/orders');
+        if (orders.length === 0) {
+          box.innerHTML = '<p class="muted">No orders yet. <a href="/index.html"><b>Start shopping</b></a></p>';
+          return;
+        }
+        box.innerHTML = orders
+          .map(
+            (o) => `
+          <div class="order-card">
+            <div class="order-head">
+              <div><b>Order #${o.id}</b><br><span class="muted">${formatDate(o.created_at)}</span></div>
+              <div>${statusBadge(o.status)}</div>
+              <div class="price">${formatPrice(o.total_amount)}</div>
+              <button class="btn secondary small" data-act="view" data-id="${o.id}">View details</button>
+            </div>
+            <div class="order-detail" id="detail-${o.id}" hidden></div>
+          </div>`
+          )
+          .join('');
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById('orders').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+
+      if (btn.dataset.act === 'view') {
+        const box = document.getElementById('detail-' + id);
+        if (!box.hidden) {
+          box.hidden = true;
+          return;
+        }
+        try {
+          const { order, items } = await api('/orders/' + id);
+          box.innerHTML = detailHtml(order, items);
+          box.hidden = false;
+        } catch (err) {
+          showToast(err.message, 'err');
+        }
+      }
+
+      if (btn.dataset.act === 'cancel') {
+        if (!confirm('Cancel this order?')) return;
+        try {
+          await api('/orders/' + id + '/cancel', { method: 'PUT' });
+          showToast('Order cancelled');
+          loadOrders();
+        } catch (err) {
+          showToast(err.message, 'err');
+        }
+      }
+    });
+
+    if (requireLogin()) loadOrders();
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="form-box">
+      <h2>Create account</h2>
+      <form id="regForm" novalidate>
+        <label for="name">Name</label>
+        <input type="text" id="name" required>
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+        <label for="password">Password (min 6 characters)</label>
+        <input type="password" id="password" required>
+        <label for="confirm">Confirm password</label>
+        <input type="password" id="confirm" required>
+        <div class="error" id="error"></div>
+        <button class="btn" type="submit">Register</button>
+      </form>
+      <p class="muted" style="margin-top:14px">Already have an account? <a href="/login.html"><b>Login</b></a></p>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('error');
+      error.textContent = '';
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm').value;
+
+      if (!name || !email || !password) {
+        error.textContent = 'All fields are required';
+        return;
+      }
+      if (password.length < 6) {
+        error.textContent = 'Password must be at least 6 characters';
+        return;
+      }
+      if (password !== confirm) {
+        error.textContent = 'Passwords do not match';
+        return;
+      }
+      try {
+        const data = await api('/auth/register', { method: 'POST', body: { name, email, password } });
+        setAuth(data.token, data.user);
+        window.location.href = '/index.html';
+      } catch (err) {
+        error.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

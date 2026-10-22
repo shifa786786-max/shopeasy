@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cart - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <h2 style="margin-bottom:14px">Your cart</h2>
+    <div id="cart"><p class="muted">Loading...</p></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    if (!getToken()) window.location.href = '/login.html';
+
+    async function loadCart() {
+      const box = document.getElementById('cart');
+      try {
+        const cart = await api('/cart');
+
+        if (cart.items.length === 0) {
+          box.innerHTML = '<p class="muted">Your cart is empty. <a href="/index.html"><b>Continue shopping</b></a></p>';
+          updateCartBadge();
+          return;
+        }
+
+        const rows = cart.items.map((i) => `
+          <div class="cart-row">
+            ${imgTag(i.image_url, i.name)}
+            <div class="info">
+              <b>${escapeHtml(i.name)}</b><br>
+              <span class="muted">${formatPrice(i.price)} each</span>
+            </div>
+            <div class="qty-ctrl">
+              <button data-act="dec" data-id="${i.product_id}" data-qty="${i.quantity}">&minus;</button>
+              <span>${i.quantity}</span>
+              <button data-act="inc" data-id="${i.product_id}" data-qty="${i.quantity}">+</button>
+            </div>
+            <div class="price">${formatPrice(i.line_total)}</div>
+            <button class="btn danger" data-act="del" data-id="${i.product_id}">Remove</button>
+          </div>`).join('');
+
+        box.innerHTML = `
+          <div class="cart-list">${rows}</div>
+          <div class="cart-total">
+            <div><span class="muted">Total (${cart.count} items)</span><br><span class="price">${formatPrice(cart.total)}</span></div>
+            <a class="btn" href="/checkout.html">Proceed to checkout</a>
+          </div>`;
+        updateCartBadge();
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById('cart').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const qty = Number(btn.dataset.qty);
+      try {
+        if (btn.dataset.act === 'del') {
+          await api('/cart/' + id, { method: 'DELETE' });
+        } else if (btn.dataset.act === 'inc') {
+          await api('/cart/' + id, { method: 'PUT', body: { quantity: qty + 1 } });
+        } else if (btn.dataset.act === 'dec') {
+          if (qty <= 1) {
+            await api('/cart/' + id, { method: 'DELETE' });
+          } else {
+            await api('/cart/' + id, { method: 'PUT', body: { quantity: qty - 1 } });
+          }
+        }
+        loadCart();
+      } catch (err) {
+        showToast(err.message, 'err');
+      }
+    });
+
+    loadCart();
+  </script>
+</body>
+</html>

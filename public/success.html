@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order placed - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="success-box" id="box"><p class="muted">Loading...</p></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function load() {
+      const id = new URLSearchParams(window.location.search).get('id');
+      const box = document.getElementById('box');
+      try {
+        const { order } = await api('/orders/' + encodeURIComponent(id));
+        box.innerHTML = `
+          <div class="tick">&#10003;</div>
+          <h2>Order placed successfully!</h2>
+          <p style="margin-top:10px">Order number: <b>#${order.id}</b></p>
+          <p>Total: <b>${formatPrice(order.total_amount)}</b> (Cash on Delivery)</p>
+          <p class="muted" style="margin-top:8px">
+            Shipping to ${escapeHtml(order.shipping_name)}, ${escapeHtml(order.shipping_city)}
+          </p>
+          <div class="actions">
+            <a class="btn" href="/orders.html">View my orders</a>
+            <a class="btn secondary" href="/index.html">Continue shopping</a>
+          </div>`;
+        updateCartBadge();
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    if (requireLogin()) load();
+  </script>
+</body>
+</html>

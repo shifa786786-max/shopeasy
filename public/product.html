@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <p style="margin-bottom:12px"><a href="/index.html">&larr; Back to shop</a></p>
+    <div id="box"><p class="muted">Loading...</p></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const id = new URLSearchParams(window.location.search).get('id');
+
+    async function load() {
+      const box = document.getElementById('box');
+      try {
+        const { product: p } = await api('/products/' + encodeURIComponent(id));
+        const inStock = p.stock > 0;
+        box.innerHTML = `
+          <div class="detail">
+            <div>${imgTag(p.image_url, p.name)}</div>
+            <div>
+              <span class="cat muted">${escapeHtml(p.category_name)}</span>
+              <h2>${escapeHtml(p.name)}</h2>
+              <span class="price">${formatPrice(p.price)}</span>
+              <p>${escapeHtml(p.description || '')}</p>
+              <p class="${p.stock <= 5 ? 'stock-low' : 'muted'}">
+                ${inStock ? p.stock + ' in stock' : 'Out of stock'}
+              </p>
+              <div class="qty-row">
+                <label for="qty">Qty</label>
+                <input type="number" id="qty" min="1" max="${p.stock}" value="1" ${inStock ? '' : 'disabled'}>
+                <button class="btn" id="addBtn" ${inStock ? '' : 'disabled'}>Add to cart</button>
+              </div>
+            </div>
+          </div>`;
+
+        document.getElementById('addBtn').addEventListener('click', async () => {
+          if (!getToken()) {
+            window.location.href = '/login.html';
+            return;
+          }
+          const quantity = Number(document.getElementById('qty').value);
+          if (!Number.isInteger(quantity) || quantity < 1) {
+            showToast('Enter a valid quantity', 'err');
+            return;
+          }
+          try {
+            await api('/cart', { method: 'POST', body: { product_id: p.id, quantity } });
+            showToast('Added to cart');
+            updateCartBadge();
+          } catch (err) {
+            showToast(err.message, 'err');
+          }
+        });
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

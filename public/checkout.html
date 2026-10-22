@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <h2 style="margin-bottom:14px">Checkout</h2>
+    <div class="checkout">
+      <form id="orderForm" class="panel" novalidate>
+        <h3>Shipping details</h3>
+        <label for="name">Full name</label>
+        <input type="text" id="name">
+        <label for="phone">Phone (10 digits)</label>
+        <input type="tel" id="phone" maxlength="10">
+        <label for="address">Address</label>
+        <textarea id="address" rows="3"></textarea>
+        <label for="city">City</label>
+        <input type="text" id="city">
+        <label for="pincode">PIN code (6 digits)</label>
+        <input type="text" id="pincode" maxlength="6">
+        <p class="muted" style="margin-top:12px">Payment method: Cash on Delivery</p>
+        <div class="error" id="error"></div>
+        <button class="btn" type="submit" id="placeBtn">Place order</button>
+      </form>
+
+      <div class="panel" id="summary"><p class="muted">Loading...</p></div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function loadSummary() {
+      const box = document.getElementById('summary');
+      try {
+        const cart = await api('/cart');
+        if (cart.items.length === 0) {
+          window.location.href = '/cart.html';
+          return;
+        }
+        const rows = cart.items
+          .map(
+            (i) => `
+          <div class="summary-row">
+            <span>${escapeHtml(i.name)} &times; ${i.quantity}</span>
+            <span>${formatPrice(i.line_total)}</span>
+          </div>`
+          )
+          .join('');
+        box.innerHTML = `<h3>Order summary</h3>${rows}
+          <div class="summary-total"><span>Total</span><span>${formatPrice(cart.total)}</span></div>`;
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('error');
+      error.textContent = '';
+
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const pincode = document.getElementById('pincode').value.trim();
+
+      if (!name || !phone || !address || !city || !pincode) {
+        error.textContent = 'All fields are required';
+        return;
+      }
+      if (!/^\d{10}$/.test(phone)) {
+        error.textContent = 'Phone must be exactly 10 digits';
+        return;
+      }
+      if (!/^\d{6}$/.test(pincode)) {
+        error.textContent = 'PIN code must be exactly 6 digits';
+        return;
+      }
+
+      const btn = document.getElementById('placeBtn');
+      btn.disabled = true;
+      try {
+        const data = await api('/orders', {
+          method: 'POST',
+          body: { name, phone, address, city, pincode }
+        });
+        window.location.href = '/success.html?id=' + data.order_id;
+      } catch (err) {
+        error.textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+
+    if (requireLogin()) {
+      const user = getUser();
+      document.getElementById('name').value = user ? user.name : '';
+      loadSummary();
+    }
+  </script>
+</body>
+</html>

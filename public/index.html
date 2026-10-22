@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="Search products...">
+      <select id="category"><option value="">All categories</option></select>
+      <select id="sort">
+        <option value="">Newest first</option>
+        <option value="price_asc">Price: low to high</option>
+        <option value="price_desc">Price: high to low</option>
+      </select>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="pagination" id="pagination"></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const state = { search: '', category: '', sort: '', page: 1 };
+    let searchTimer;
+
+    async function loadCategories() {
+      try {
+        const data = await api('/products/categories');
+        const select = document.getElementById('category');
+        data.categories.forEach((c) => {
+          const option = document.createElement('option');
+          option.value = c.id;
+          option.textContent = c.name;
+          select.appendChild(option);
+        });
+      } catch (e) {
+        showToast(e.message, 'err');
+      }
+    }
+
+    function stockLabel(stock) {
+      if (stock < 1) return '<span class="stock-low">Out of stock</span>';
+      if (stock <= 5) return `<span class="stock-low">Only ${stock} left</span>`;
+      return '';
+    }
+
+    async function loadProducts() {
+      const grid = document.getElementById('grid');
+      const params = new URLSearchParams();
+      if (state.search) params.set('search', state.search);
+      if (state.category) params.set('category', state.category);
+      if (state.sort) params.set('sort', state.sort);
+      params.set('page', state.page);
+      params.set('limit', 8);
+
+      grid.innerHTML = '<p class="muted">Loading...</p>';
+      try {
+        const data = await api('/products?' + params.toString());
+
+        if (data.products.length === 0) {
+          grid.innerHTML = '<p class="muted">No products found.</p>';
+          document.getElementById('pagination').innerHTML = '';
+          return;
+        }
+
+        grid.innerHTML = data.products
+          .map(
+            (p) => `
+          <div class="card">
+            <a href="/product.html?id=${p.id}">${imgTag(p.image_url, p.name)}</a>
+            <div class="body">
+              <span class="cat">${escapeHtml(p.category_name)}</span>
+              <h3><a href="/product.html?id=${p.id}">${escapeHtml(p.name)}</a></h3>
+              <span class="price">${formatPrice(p.price)}</span>
+              ${stockLabel(p.stock)}
+              <button class="btn" data-id="${p.id}" ${p.stock < 1 ? 'disabled' : ''}>
+                ${p.stock < 1 ? 'Out of stock' : 'Add to cart'}
+              </button>
+            </div>
+          </div>`
+          )
+          .join('');
+
+        renderPagination(data.page, data.totalPages);
+      } catch (e) {
+        grid.innerHTML = '<p class="muted">Could not load products.</p>';
+        showToast(e.message, 'err');
+      }
+    }
+
+    function renderPagination(page, totalPages) {
+      const box = document.getElementById('pagination');
+      if (totalPages <= 1) {
+        box.innerHTML = '';
+        return;
+      }
+      let html = '';
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<button data-page="${i}" class="${i === page ? 'active' : ''}">${i}</button>`;
+      }
+      box.innerHTML = html;
+    }
+
+    async function addToCart(id) {
+      if (!getToken()) {
+        window.location.href = '/login.html';
+        return;
+      }
+      try {
+        await api('/cart', { method: 'POST', body: { product_id: id, quantity: 1 } });
+        showToast('Added to cart');
+        updateCartBadge();
+      } catch (e) {
+        showToast(e.message, 'err');
+      }
+    }
+
+    document.getElementById('grid').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-id]');
+      if (btn) addToCart(Number(btn.dataset.id));
+    });
+
+    document.getElementById('pagination').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-page]');
+      if (!btn) return;
+      state.page = Number(btn.dataset.page);
+      loadProducts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.getElementById('search').addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = e.target.value.trim();
+        state.page = 1;
+        loadProducts();
+      }, 300);
+    });
+
+    document.getElementById('category').addEventListener('change', (e) => {
+      state.category = e.target.value;
+      state.page = 1;
+      loadProducts();
+    });
+
+    document.getElementById('sort').addEventListener('change', (e) => {
+      state.sort = e.target.value;
+      state.page = 1;
+      loadProducts();
+    });
+
+    loadCategories();
+    loadProducts();
+  </script>
+</body>
+</html>
