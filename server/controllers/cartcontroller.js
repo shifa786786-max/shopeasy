@@ -3,7 +3,7 @@ const db = require('../db');
 function getCart(userId) {
   const items = db
     .prepare(
-      `SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock, p.image_url,
+      `SELECT ci.id AS item_id, ci.product_id, ci.quantity, p.name, p.price, p.stock, p.image_url,
               (ci.quantity * p.price) AS line_total
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
@@ -22,11 +22,11 @@ function viewCart(req, res) {
 }
 
 function addToCart(req, res) {
-  const productId = Number(req.body.product_id);
+  const productId = Number(req.body.productId ?? req.body.product_id);
   const qty = Number(req.body.quantity ?? 1);
 
   if (!Number.isInteger(productId) || !Number.isInteger(qty) || qty < 1) {
-    return res.status(400).json({ error: 'Valid product_id and quantity are required' });
+    return res.status(400).json({ error: 'Valid productId and quantity are required' });
   }
 
   const product = db
@@ -60,35 +60,39 @@ function addToCart(req, res) {
 }
 
 function updateQuantity(req, res) {
-  const productId = Number(req.params.productId);
+  const itemId = Number(req.params.itemId);
   const qty = Number(req.body.quantity);
 
-  if (!Number.isInteger(productId) || !Number.isInteger(qty) || qty < 1) {
+  if (!Number.isInteger(itemId) || !Number.isInteger(qty) || qty < 1) {
     return res.status(400).json({ error: 'Quantity must be 1 or more' });
   }
 
   const item = db
-    .prepare('SELECT id FROM cart_items WHERE user_id = ? AND product_id = ?')
-    .get(req.user.id, productId);
+    .prepare('SELECT id, product_id FROM cart_items WHERE id = ? AND user_id = ?')
+    .get(itemId, req.user.id);
   if (!item) {
     return res.status(404).json({ error: 'Item not in cart' });
   }
 
-  const product = db.prepare('SELECT stock FROM products WHERE id = ?').get(productId);
+  const product = db.prepare('SELECT stock FROM products WHERE id = ?').get(item.product_id);
   if (qty > product.stock) {
     return res.status(400).json({ error: `Only ${product.stock} item(s) in stock` });
   }
 
-  db.prepare('UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?')
-    .run(qty, req.user.id, productId);
+  db.prepare('UPDATE cart_items SET quantity = ? WHERE id = ?').run(qty, item.id);
 
   res.json(getCart(req.user.id));
 }
 
 function removeItem(req, res) {
-  const productId = Number(req.params.productId);
-  db.prepare('DELETE FROM cart_items WHERE user_id = ? AND product_id = ?')
-    .run(req.user.id, productId);
+  const itemId = Number(req.params.itemId);
+  const result = db
+    .prepare('DELETE FROM cart_items WHERE id = ? AND user_id = ?')
+    .run(itemId, req.user.id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: 'Item not in cart' });
+  }
   res.json(getCart(req.user.id));
 }
 

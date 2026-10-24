@@ -117,6 +117,7 @@ function renderNav() {
   if (user) {
     links += '<a href="/cart.html">Cart <span class="badge" id="cartBadge">0</span></a>';
     links += '<a href="/orders.html">My Orders</a>';
+    links += '<a href="/profile.html">Profile</a>';
     if (user.role === 'admin') links += '<a href="/admin/products.html">Admin</a>';
     links += `<span class="who">Hi, ${escapeHtml(user.name)}</span>`;
     links += '<button class="btn-link" id="logoutBtn">Logout</button>';

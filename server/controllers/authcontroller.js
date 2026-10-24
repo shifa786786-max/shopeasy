@@ -64,4 +64,25 @@ function me(req, res) {
   res.json({ user });
 }
 
-module.exports = { register, login, me };
+function updateProfile(req, res) {
+  const name = String(req.body.name || '').trim();
+  const address = String(req.body.address || '').trim();
+  const phone = String(req.body.phone || '').trim();
+
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  if (phone && !/^\d{10}$/.test(phone)) {
+    return res.status(400).json({ error: 'Phone must be 10 digits' });
+  }
+
+  db.prepare('UPDATE users SET name = ?, phone = ?, address = ? WHERE id = ?')
+    .run(name, phone || null, address || null, req.user.id);
+
+  const user = db
+    .prepare('SELECT id, name, email, role, phone, address FROM users WHERE id = ?')
+    .get(req.user.id);
+  res.json({ user });
+}
+
+module.exports = { register, login, me, updateProfile };

@@ -19,5 +19,6 @@ router.delete('/categories/:id', c.deleteCategory);
 
 router.get('/orders', c.listOrders);
 router.put('/orders/:id/status', c.updateOrderStatus);
+router.patch('/orders/:id/status', c.updateOrderStatus);
 
 module.exports = router;

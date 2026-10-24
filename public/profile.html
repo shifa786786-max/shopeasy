@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Profile - ShopEasy</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="form-box">
+      <h2>My profile</h2>
+      <form id="profileForm" novalidate>
+        <label for="name">Name</label>
+        <input type="text" id="name">
+        <label for="email">Email (cannot be changed)</label>
+        <input type="email" id="email" disabled>
+        <label for="phone">Phone (10 digits)</label>
+        <input type="tel" id="phone" maxlength="10">
+        <label for="address">Address</label>
+        <textarea id="address" rows="3" style="width:100%"></textarea>
+        <div class="error" id="error"></div>
+        <button class="btn" type="submit">Save changes</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function load() {
+      try {
+        const { user } = await api('/auth/me');
+        document.getElementById('name').value = user.name || '';
+        document.getElementById('email').value = user.email || '';
+        document.getElementById('phone').value = user.phone || '';
+        document.getElementById('address').value = user.address || '';
+      } catch (err) {
+        document.getElementById('error').textContent = err.message;
+      }
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('error');
+      error.textContent = '';
+
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+
+      if (!name) {
+        error.textContent = 'Name is required';
+        return;
+      }
+      if (phone && !/^\d{10}$/.test(phone)) {
+        error.textContent = 'Phone must be exactly 10 digits';
+        return;
+      }
+
+      try {
+        const data = await api('/auth/me', { method: 'PUT', body: { name, phone, address } });
+        setAuth(getToken(), { ...getUser(), name: data.user.name });
+        renderNav();
+        showToast('Profile updated');
+      } catch (err) {
+        error.textContent = err.message;
+      }
+    });
+
+    if (requireLogin()) load();
+  </script>
+</body>
+</html>

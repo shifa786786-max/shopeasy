@@ -13,7 +13,7 @@ router.use(auth);
 
 router.get('/', viewCart);
 router.post('/', addToCart);
-router.put('/:productId', updateQuantity);
-router.delete('/:productId', removeItem);
+router.put('/:itemId', updateQuantity);
+router.delete('/:itemId', removeItem);
 
 module.exports = router;

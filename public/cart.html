@@ -37,12 +37,12 @@
               <span class="muted">${formatPrice(i.price)} each</span>
             </div>
             <div class="qty-ctrl">
-              <button data-act="dec" data-id="${i.product_id}" data-qty="${i.quantity}">&minus;</button>
+              <button data-act="dec" data-id="${i.item_id}" data-qty="${i.quantity}">&minus;</button>
               <span>${i.quantity}</span>
-              <button data-act="inc" data-id="${i.product_id}" data-qty="${i.quantity}">+</button>
+              <button data-act="inc" data-id="${i.item_id}" data-qty="${i.quantity}">+</button>
             </div>
             <div class="price">${formatPrice(i.line_total)}</div>
-            <button class="btn danger" data-act="del" data-id="${i.product_id}">Remove</button>
+            <button class="btn danger" data-act="del" data-id="${i.item_id}">Remove</button>
           </div>`).join('');
 
         box.innerHTML = `

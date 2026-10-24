@@ -19,14 +19,27 @@
       const id = new URLSearchParams(window.location.search).get('id');
       const box = document.getElementById('box');
       try {
-        const { order } = await api('/orders/' + encodeURIComponent(id));
+        const { order, items } = await api('/orders/' + encodeURIComponent(id));
+        const rows = items
+          .map(
+            (i) => `
+          <div class="summary-row">
+            <span>${escapeHtml(i.name)} &times; ${i.quantity}</span>
+            <span>${formatPrice(i.unit_price * i.quantity)}</span>
+          </div>`
+          )
+          .join('');
         box.innerHTML = `
           <div class="tick">&#10003;</div>
           <h2>Order placed successfully!</h2>
-          <p style="margin-top:10px">Order number: <b>#${order.id}</b></p>
-          <p>Total: <b>${formatPrice(order.total_amount)}</b> (Cash on Delivery)</p>
-          <p class="muted" style="margin-top:8px">
-            Shipping to ${escapeHtml(order.shipping_name)}, ${escapeHtml(order.shipping_city)}
+          <p style="margin-top:10px">Order ID: <b>#${order.id}</b></p>
+          <div style="text-align:left;margin-top:14px">
+            ${rows}
+            <div class="summary-total"><span>Total (Cash on Delivery)</span><span>${formatPrice(order.total_amount)}</span></div>
+          </div>
+          <p class="muted" style="margin-top:12px;text-align:left">
+            Shipping to: ${escapeHtml(order.shipping_name)}, ${escapeHtml(order.shipping_address)},
+            ${escapeHtml(order.shipping_city)} - ${escapeHtml(order.shipping_pincode)}
           </p>
           <div class="actions">
             <a class="btn" href="/orders.html">View my orders</a>
