@@ -226,7 +226,7 @@ function listOrders(req, res) {
   const orders = db
     .prepare(
       `SELECT o.id, o.total_amount, o.status, o.created_at,
-              o.shipping_name, o.shipping_city, u.email AS customer_email
+              o.shipping_name, o.shipping_city, u.name AS customer_name, u.email AS customer_email
        FROM orders o
        JOIN users u ON u.id = o.user_id
        ${where}
@@ -302,7 +302,7 @@ function stats(req, res) {
   const lowStock = db
     .prepare(
       `SELECT id, name, stock FROM products
-       WHERE is_active = 1 AND stock <= 5 ORDER BY stock ASC`
+       WHERE is_active = 1 AND stock < 5 ORDER BY stock ASC`
     )
     .all();
 

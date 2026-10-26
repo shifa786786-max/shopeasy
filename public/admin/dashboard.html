@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - ShopEasy Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="subnav" id="subnav"></div>
+    <div id="content"><p class="muted">Loading...</p></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function load() {
+      const box = document.getElementById('content');
+      try {
+        const s = await api('/admin/stats');
+        const max = Math.max(...s.byStatus.map((x) => x.count), 1);
+
+        const bars = s.byStatus.length
+          ? s.byStatus
+              .map(
+                (x) => `
+            <div class="bar-row">
+              <span class="label">${statusBadge(x.status)}</span>
+              <div class="bar" style="width:${(x.count / max) * 100}%"></div>
+              <span>${x.count}</span>
+            </div>`
+              )
+              .join('')
+          : '<p class="muted">No orders yet</p>';
+
+        const low = s.lowStock.length
+          ? s.lowStock
+              .map(
+                (p) => `
+            <div class="summary-row">
+              <span>${escapeHtml(p.name)}</span>
+              <span class="stock-low">${p.stock} left</span>
+            </div>`
+              )
+              .join('')
+          : '<p class="muted">All products have enough stock</p>';
+
+        box.innerHTML = `
+          <div class="stat-grid">
+            <div class="stat"><span class="muted">Total orders</span><div class="num">${s.totalOrders}</div></div>
+            <div class="stat"><span class="muted">Total sales</span><div class="num">${formatPrice(s.revenue)}</div></div>
+            <div class="stat"><span class="muted">Active products</span><div class="num">${s.totalProducts}</div></div>
+            <div class="stat"><span class="muted">Customers</span><div class="num">${s.totalCustomers}</div></div>
+          </div>
+          <div class="two-col">
+            <div class="panel"><h3>Orders by status</h3>${bars}</div>
+            <div class="panel"><h3>Low stock (below 5)</h3>${low}</div>
+          </div>`;
+      } catch (err) {
+        box.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    if (requireAdmin()) {
+      document.getElementById('subnav').innerHTML = adminNav('dashboard');
+      load();
+    }
+  </script>
+</body>
+</html>

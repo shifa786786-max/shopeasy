@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products - ShopEasy Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="site" id="navbar"></header>
+
+  <main class="container">
+    <div class="subnav" id="subnav"></div>
+
+    <div class="two-col">
+      <form id="productForm" class="panel" novalidate>
+        <h3 id="formTitle">Add product</h3>
+        <input type="hidden" id="editId">
+        <label for="name">Name</label>
+        <input type="text" id="name">
+        <label for="price">Price (in &#8377;)</label>
+        <input type="number" id="price" min="0" step="0.01">
+        <label for="stock">Stock</label>
+        <input type="number" id="stock" min="0" step="1" value="0">
+        <label for="category_id">Category</label>
+        <select id="category_id"></select>
+        <label for="description">Description</label>
+        <textarea id="description" rows="3"></textarea>
+        <label for="image_url">Image URL (optional)</label>
+        <input type="text" id="image_url" placeholder="/images/placeholder.png">
+        <div class="error" id="error"></div>
+        <div class="row-actions">
+          <button class="btn" type="submit">Save</button>
+          <button class="btn secondary" type="button" id="cancelEdit" hidden>Cancel edit</button>
+        </div>
+      </form>
+
+      <div class="panel">
+        <h3>Categories</h3>
+        <div id="catList"></div>
+        <div class="row-actions" style="margin-top:12px">
+          <input type="text" id="newCat" placeholder="New category" style="flex:1;width:auto">
+          <button class="btn" type="button" id="addCat" style="margin-top:0">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:22px 0 10px">All products</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let products = [];
+    let categories = [];
+
+    function resetForm() {
+      document.getElementById('productForm').reset();
+      document.getElementById('editId').value = '';
+      document.getElementById('formTitle').textContent = 'Add product';
+      document.getElementById('cancelEdit').hidden = true;
+      document.getElementById('error').textContent = '';
+    }
+
+    async function loadCategories() {
+      const data = await api('/products/categories');
+      categories = data.categories;
+
+      document.getElementById('category_id').innerHTML = categories
+        .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+        .join('');
+
+      document.getElementById('catList').innerHTML = categories.length
+        ? categories
+            .map(
+              (c) => `
+          <div class="summary-row">
+            <span>${escapeHtml(c.name)}</span>
+            <span class="row-actions">
+              <button class="btn secondary small" type="button" data-cat="rename" data-id="${c.id}" data-name="${escapeHtml(c.name)}">Rename</button>
+              <button class="btn danger small" type="button" data-cat="delete" data-id="${c.id}">Delete</button>
+            </span>
+          </div>`
+            )
+            .join('')
+        : '<p class="muted">No categories yet</p>';
+    }
+
+    async function loadProducts() {
+      const data = await api('/admin/products');
+      products = data.products;
+      document.getElementById('rows').innerHTML = products
+        .map(
+          (p) => `
+        <tr>
+          <td>${p.id}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${escapeHtml(p.category_name)}</td>
+          <td>${formatPrice(p.price)}</td>
+          <td class="${p.stock < 5 ? 'stock-low' : ''}">${p.stock}</td>
+          <td>${p.is_active ? 'Active' : 'Removed'}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn secondary small" data-act="edit" data-id="${p.id}">Edit</button>
+              ${
+                p.is_active
+                  ? `<button class="btn danger small" data-act="remove" data-id="${p.id}">Remove</button>`
+                  : `<button class="btn small" data-act="restore" data-id="${p.id}">Restore</button>`
+              }
+            </div>
+          </td>
+        </tr>`
+        )
+        .join('');
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('error');
+      error.textContent = '';
+
+      const editId = document.getElementById('editId').value;
+      const name = document.getElementById('name').value.trim();
+      const price = document.getElementById('price').value;
+      const stock = document.getElementById('stock').value;
+      const category_id = document.getElementById('category_id').value;
+      const description = document.getElementById('description').value.trim();
+      const image_url = document.getElementById('image_url').value.trim();
+
+      if (!name) {
+        error.textContent = 'Product name is required';
+        return;
+      }
+      if (price === '' || isNaN(Number(price)) || Number(price) < 0) {
+        error.textContent = 'Enter a valid price';
+        return;
+      }
+      if (stock === '' || !Number.isInteger(Number(stock)) || Number(stock) < 0) {
+        error.textContent = 'Stock must be a whole number, 0 or more';
+        return;
+      }
+      if (!category_id) {
+        error.textContent = 'Create a category first';
+        return;
+      }
+
+      const body = {
+        name,
+        description,
+        price: Number(price),
+        stock: Number(stock),
+        category_id: Number(category_id),
+        image_url: image_url || '/images/placeholder.png'
+      };
+
+      try {
+        if (editId) {
+          await api('/admin/products/' + editId, { method: 'PUT', body });
+          showToast('Product updated');
+        } else {
+          await api('/admin/products', { method: 'POST', body });
+          showToast('Product added');
+        }
+        resetForm();
+        await loadProducts();
+      } catch (err) {
+        error.textContent = err.message;
+      }
+    });
+
+    document.getElementById('cancelEdit').addEventListener('click', resetForm);
+
+    document.getElementById('rows').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+
+      try {
+        if (btn.dataset.act === 'edit') {
+          const p = products.find((x) => x.id === id);
+          if (!p) return;
+          document.getElementById('editId').value = p.id;
+          document.getElementById('name').value = p.name;
+          document.getElementById('price').value = p.price / 100;
+          document.getElementById('stock').value = p.stock;
+          document.getElementById('category_id').value = p.category_id;
+          document.getElementById('description').value = p.description || '';
+          document.getElementById('image_url').value = p.image_url || '';
+          document.getElementById('formTitle').textContent = 'Edit product #' + p.id;
+          document.getElementById('cancelEdit').hidden = false;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (btn.dataset.act === 'remove') {
+          if (!confirm('Remove this product from the shop?')) return;
+          await api('/admin/products/' + id, { method: 'DELETE' });
+          showToast('Product removed');
+          await loadProducts();
+        } else if (btn.dataset.act === 'restore') {
+          await api('/admin/products/' + id, { method: 'PUT', body: { is_active: true } });
+          showToast('Product restored');
+          await loadProducts();
+        }
+      } catch (err) {
+        showToast(err.message, 'err');
+      }
+    });
+
+    document.getElementById('addCat').addEventListener('click', async () => {
+      const input = document.getElementById('newCat');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('Enter a category name', 'err');
+        return;
+      }
+      try {
+        await api('/admin/categories', { method: 'POST', body: { name } });
+        input.value = '';
+        showToast('Category added');
+        await loadCategories();
+      } catch (err) {
+        showToast(err.message, 'err');
+      }
+    });
+
+    document.getElementById('catList').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-cat]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      try {
+        if (btn.dataset.cat === 'rename') {
+          const name = prompt('New category name', btn.dataset.name);
+          if (!name || !name.trim()) return;
+          await api('/admin/categories/' + id, { method: 'PUT', body: { name: name.trim() } });
+          showToast('Category renamed');
+        } else {
+          if (!confirm('Delete this category?')) return;
+          await api('/admin/categories/' + id, { method: 'DELETE' });
+          showToast('Category deleted');
+        }
+        await loadCategories();
+        await loadProducts();
+      } catch (err) {
+        showToast(err.message, 'err');
+      }
+    });
+
+    async function init() {
+      try {
+        await loadCategories();
+        await loadProducts();
+      } catch (err) {
+        showToast(err.message, 'err');
+      }
+    }
+
+    if (requireAdmin()) {
+      document.getElementById('subnav').innerHTML = adminNav('products');
+      init();
+    }
+  </script>
+</body>
+</html>
