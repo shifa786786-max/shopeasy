@@ -206,7 +206,7 @@
         {
           "name": "Admin Update Order Status",
           "request": {
-            "method": "PUT",
+            "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"status\": \"Shipped\"\n}" },
             "url": "{{baseUrl}}/api/admin/orders/1/status"
