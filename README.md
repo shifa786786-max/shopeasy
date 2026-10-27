@@ -121,3 +121,15 @@ Prices are stored in paise (integer).
 
 ## Author
 Shifa Siddiqui
+
+## Screenshots
+
+![Home](docs/home.png)
+
+![Cart](docs/cart.png)
+
+![Order Success](docs/success.png)
+
+![Admin Dashboard](docs/admin-dashboard.png)
+
+![Admin Products](docs/admin-products.png)
